@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from "next";
+import { DataProvider } from "@/providers/DataProvider";
+import { BottomNav } from "@/components/layout/BottomNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +37,12 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased bg-gray-50 dark:bg-gray-900">
+        <DataProvider>
+          <div className="pb-16">{children}</div>
+          <BottomNav />
+        </DataProvider>
+      </body>
     </html>
   );
 }
