@@ -191,9 +191,51 @@ export const FIRERED_LEAFGREEN_DEX: GameDex = {
   ],
 };
 
+/* ── External dex data ─────────────────────────── */
+import { BLACK_WHITE_DEX } from "./dex-data/black-white";
+import { BLACK2_WHITE2_DEX } from "./dex-data/black2-white2";
+import { BDSP_DEX } from "./dex-data/brilliant-diamond-shining-pearl";
+import { CRYSTAL_DEX } from "./dex-data/crystal";
+import { DIAMOND_PEARL_DEX } from "./dex-data/diamond-pearl";
+import { EMERALD_DEX } from "./dex-data/emerald";
+import { GOLD_SILVER_DEX } from "./dex-data/gold-silver";
+import { HEARTGOLD_SOULSILVER_DEX } from "./dex-data/heartgold-soulsilver";
+import { ORAS_DEX } from "./dex-data/omega-ruby-alpha-sapphire";
+import { PLATINUM_DEX } from "./dex-data/platinum";
+import { RED_BLUE_DEX } from "./dex-data/red-blue";
+import { RUBY_SAPPHIRE_DEX } from "./dex-data/ruby-sapphire";
+import { SCARLET_VIOLET_DEX } from "./dex-data/scarlet-violet";
+import { SUN_MOON_DEX } from "./dex-data/sun-moon";
+import { SWORD_SHIELD_DEX } from "./dex-data/sword-shield";
+import { USUM_DEX } from "./dex-data/ultra-sun-ultra-moon";
+import { X_Y_DEX } from "./dex-data/x-y";
+import { LEGENDS_ARCEUS_DEX } from "./dex-data/legends-arceus";
+import { LETS_GO_DEX } from "./dex-data/lets-go";
+import { YELLOW_DEX } from "./dex-data/yellow";
+
 /* ── Registry ───────────────────────────────────── */
 const GAME_DEX_DATA: Record<string, GameDex> = {
+  "black-white": BLACK_WHITE_DEX,
+  "black2-white2": BLACK2_WHITE2_DEX,
+  "brilliant-diamond-shining-pearl": BDSP_DEX,
+  crystal: CRYSTAL_DEX,
+  "diamond-pearl": DIAMOND_PEARL_DEX,
+  emerald: EMERALD_DEX,
+  "gold-silver": GOLD_SILVER_DEX,
+  "heartgold-soulsilver": HEARTGOLD_SOULSILVER_DEX,
+  "omega-ruby-alpha-sapphire": ORAS_DEX,
+  platinum: PLATINUM_DEX,
+  "red-blue": RED_BLUE_DEX,
+  "ruby-sapphire": RUBY_SAPPHIRE_DEX,
+  "scarlet-violet": SCARLET_VIOLET_DEX,
   "firered-leafgreen": FIRERED_LEAFGREEN_DEX,
+  "sun-moon": SUN_MOON_DEX,
+  "sword-shield": SWORD_SHIELD_DEX,
+  "ultra-sun-ultra-moon": USUM_DEX,
+  "legends-arceus": LEGENDS_ARCEUS_DEX,
+  "lets-go": LETS_GO_DEX,
+  "x-y": X_Y_DEX,
+  "yellow": YELLOW_DEX,
 };
 
 export function getGameDex(slug: string): GameDex | undefined {
