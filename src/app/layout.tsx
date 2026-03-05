@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { DataProvider } from "@/providers/DataProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import "./globals.css";
 
@@ -38,10 +39,12 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="antialiased bg-gray-50 dark:bg-gray-900">
-        <DataProvider>
-          <div className="pb-16">{children}</div>
-          <BottomNav />
-        </DataProvider>
+        <AuthProvider>
+          <DataProvider>
+            <div className="pb-16">{children}</div>
+            <BottomNav />
+          </DataProvider>
+        </AuthProvider>
       </body>
     </html>
   );
