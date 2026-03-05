@@ -9,7 +9,13 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import type { PokemonListItem, PokemonDetail, EvolutionChain } from "@/lib/db/pokemon-db";
+import type {
+  PokemonListItem,
+  PokemonDetail,
+  EvolutionChain,
+  MoveDetail,
+  LocationEncounter,
+} from "@/lib/db/pokemon-db";
 
 /** Load Pokemon list from disk. */
 export function loadAllPokemonListSync(): PokemonListItem[] {
@@ -37,6 +43,29 @@ export function loadAllPokemonDetailSync(): PokemonDetail[] {
 /** Load evolution chains from disk. */
 export function loadEvolutionChainsSync(): EvolutionChain[] {
   const filePath = path.join(process.cwd(), "data", "evolution-chains.json");
+  const raw = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(raw);
+}
+
+/** Load move details from disk. */
+export function loadMovesSync(): MoveDetail[] {
+  const filePath = path.join(process.cwd(), "data", "moves.json");
+  if (!fs.existsSync(filePath)) return [];
+  const raw = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(raw);
+}
+
+/** Load encounters for a version group from disk. */
+export function loadEncountersByVersionGroupSync(
+  slug: string
+): LocationEncounter[] {
+  const filePath = path.join(
+    process.cwd(),
+    "data",
+    "encounters",
+    `${slug}.json`
+  );
+  if (!fs.existsSync(filePath)) return [];
   const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw);
 }

@@ -83,6 +83,30 @@ export interface TypeEffectiveness {
   };
 }
 
+export interface MoveDetail {
+  id: number;
+  name: string;
+  type: string;
+  damageClass: string; // "physical" | "special" | "status"
+  power: number | null;
+  accuracy: number | null;
+  pp: number;
+  effectText: string;
+  effectChance: number | null;
+}
+
+export interface LocationEncounter {
+  pokemonId: number;
+  pokemonName: string;
+  locationArea: string;
+  locationName: string;
+  versionName: string;
+  method: string;
+  minLevel: number;
+  maxLevel: number;
+  chance: number;
+}
+
 interface PokedexDB extends DBSchema {
   pokemon: {
     key: number;
@@ -101,6 +125,21 @@ interface PokedexDB extends DBSchema {
     key: number;
     value: EvolutionChain;
   };
+  moves: {
+    key: string;
+    value: MoveDetail;
+    indexes: {
+      "by-type": string;
+    };
+  };
+  encounters: {
+    key: [number, string, string]; // [pokemonId, versionName, locationArea]
+    value: LocationEncounter;
+    indexes: {
+      "by-version": string;
+      "by-location": string;
+    };
+  };
   meta: {
     key: string;
     value: {
@@ -116,7 +155,7 @@ interface PokedexDB extends DBSchema {
 // ---------------------------------------------------------------------------
 
 const DB_NAME = "pokedex";
-const DB_VERSION = 1;
+const DB_VERSION = 3; // v2: +moves, v3: +encounters
 
 let dbPromise: Promise<IDBPDatabase<PokedexDB>> | null = null;
 
@@ -147,6 +186,23 @@ function getDB(): Promise<IDBPDatabase<PokedexDB>> {
         // Metadata (version tracking, etc.)
         if (!db.objectStoreNames.contains("meta")) {
           db.createObjectStore("meta", { keyPath: "key" });
+        }
+
+        // v2: Moves store
+        if (!db.objectStoreNames.contains("moves")) {
+          const movesStore = db.createObjectStore("moves", {
+            keyPath: "name",
+          });
+          movesStore.createIndex("by-type", "type");
+        }
+
+        // v3: Encounters store
+        if (!db.objectStoreNames.contains("encounters")) {
+          const encounterStore = db.createObjectStore("encounters", {
+            keyPath: ["pokemonId", "versionName", "locationArea"],
+          });
+          encounterStore.createIndex("by-version", "versionName");
+          encounterStore.createIndex("by-location", "locationArea");
         }
       },
     });
@@ -215,10 +271,26 @@ export async function hydrateFromStatic(): Promise<void> {
   await evoTx.done;
   console.log(`[PokedexDB] ${evoData.length} evolution chains loaded`);
 
+  // Hydrate moves (if available)
+  try {
+    const movesRes = await fetch("/data/moves.json");
+    if (movesRes.ok) {
+      const movesData: MoveDetail[] = await movesRes.json();
+      const movesTx = db.transaction("moves", "readwrite");
+      for (const move of movesData) {
+        movesTx.store.put(move);
+      }
+      await movesTx.done;
+      console.log(`[PokedexDB] ${movesData.length} moves loaded`);
+    }
+  } catch (err) {
+    console.warn("[PokedexDB] moves.json not found, skipping moves hydration");
+  }
+
   // Mark as hydrated
   await db.put("meta", {
     key: "dataVersion",
-    value: "1.0.0",
+    value: "3.0.0",
     updatedAt: Date.now(),
   });
 
@@ -303,4 +375,95 @@ export async function getEvolutionChain(
 export async function getPokemonCount(): Promise<number> {
   const db = await getDB();
   return db.count("pokemon-list");
+}
+
+// ---------------------------------------------------------------------------
+// Move queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Get a move's full details by name.
+ */
+export async function getMoveByName(
+  name: string
+): Promise<MoveDetail | undefined> {
+  const db = await getDB();
+  return db.get("moves", name);
+}
+
+/**
+ * Get all moves as a Map keyed by name (for bulk lookups).
+ */
+export async function getAllMovesMap(): Promise<Map<string, MoveDetail>> {
+  const db = await getDB();
+  const all = await db.getAll("moves");
+  const map = new Map<string, MoveDetail>();
+  for (const move of all) {
+    map.set(move.name, move);
+  }
+  return map;
+}
+
+/**
+ * Check if moves data has been loaded.
+ */
+export async function isMovesLoaded(): Promise<boolean> {
+  const db = await getDB();
+  const count = await db.count("moves");
+  return count > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Encounter queries (lazy-loaded per game)
+// ---------------------------------------------------------------------------
+
+/**
+ * Hydrate encounters for a specific version group from static JSON.
+ */
+export async function hydrateEncounters(
+  versionGroupSlug: string
+): Promise<void> {
+  const db = await getDB();
+
+  // Check if already loaded
+  const metaKey = `encounters-${versionGroupSlug}`;
+  const existing = await db.get("meta", metaKey);
+  if (existing) return;
+
+  try {
+    const res = await fetch(`/data/encounters/${versionGroupSlug}.json`);
+    if (!res.ok) return;
+
+    const encounters: LocationEncounter[] = await res.json();
+    const tx = db.transaction("encounters", "readwrite");
+    for (const enc of encounters) {
+      tx.store.put(enc);
+    }
+    await tx.done;
+
+    await db.put("meta", {
+      key: metaKey,
+      value: true,
+      updatedAt: Date.now(),
+    });
+
+    console.log(
+      `[PokedexDB] ${encounters.length} encounters loaded for ${versionGroupSlug}`
+    );
+  } catch {
+    console.warn(
+      `[PokedexDB] encounters/${versionGroupSlug}.json not found`
+    );
+  }
+}
+
+/**
+ * Get encounters for a specific version.
+ */
+export async function getEncountersByVersion(
+  versionName: string
+): Promise<LocationEncounter[]> {
+  const db = await getDB();
+  const index = db.transaction("encounters", "readonly").store.index("by-version");
+  return index.getAll(versionName);
 }

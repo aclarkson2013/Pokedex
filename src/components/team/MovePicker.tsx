@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatMoveName } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
+import { TypeBadge } from "@/components/pokemon/TypeBadge";
+import { getAllMovesMap, type MoveDetail } from "@/lib/db/pokemon-db";
 import type { GroupedMoves } from "@/lib/hooks/useTeamMemberData";
 
 interface MovePickerProps {
@@ -22,6 +24,12 @@ const CATEGORY_LABELS: Record<MoveCategory, string> = {
   tutor: "Tutor",
 };
 
+const DAMAGE_CLASS_SHORT: Record<string, { label: string; color: string }> = {
+  physical: { label: "PHY", color: "text-orange-500" },
+  special: { label: "SPE", color: "text-blue-500" },
+  status: { label: "STA", color: "text-gray-400" },
+};
+
 export function MovePicker({
   isOpen,
   onClose,
@@ -31,9 +39,20 @@ export function MovePicker({
 }: MovePickerProps) {
   const [activeTab, setActiveTab] = useState<MoveCategory>("levelUp");
   const [searchQuery, setSearchQuery] = useState("");
+  const [moveDetailsMap, setMoveDetailsMap] = useState<Map<string, MoveDetail>>(
+    new Map()
+  );
+
+  // Load move details from IndexedDB
+  useEffect(() => {
+    if (isOpen && moveDetailsMap.size === 0) {
+      getAllMovesMap().then(setMoveDetailsMap).catch(() => {});
+    }
+  }, [isOpen, moveDetailsMap.size]);
 
   if (!isOpen) return null;
 
+  const hasMoveDetails = moveDetailsMap.size > 0;
   const categories: MoveCategory[] = ["levelUp", "tm", "egg", "tutor"];
   const availableCategories = categories.filter(
     (cat) => moves[cat].length > 0
@@ -131,6 +150,12 @@ export function MovePicker({
             {filteredMoves.map((move) => {
               const isSelected = selectedMoves.includes(move.name);
               const disabled = atLimit && !isSelected;
+              const detail = hasMoveDetails
+                ? moveDetailsMap.get(move.name)
+                : undefined;
+              const dmgClass = detail
+                ? DAMAGE_CLASS_SHORT[detail.damageClass]
+                : null;
 
               return (
                 <button
@@ -138,7 +163,7 @@ export function MovePicker({
                   onClick={() => !disabled && onToggleMove(move.name)}
                   disabled={disabled}
                   className={cn(
-                    "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+                    "flex w-full items-center gap-2 px-4 py-2.5 text-left transition-colors",
                     isSelected
                       ? "bg-red-50 dark:bg-red-900/10"
                       : disabled
@@ -172,15 +197,39 @@ export function MovePicker({
                     )}
                   </div>
 
-                  <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">
+                  {/* Move name */}
+                  <span className="flex-1 text-sm font-medium text-gray-900 truncate dark:text-white">
                     {formatMoveName(move.name)}
                   </span>
 
-                  {"level" in move && (move as { level: number }).level > 0 && (
-                    <span className="text-xs text-gray-400">
-                      Lv. {(move as { level: number }).level}
-                    </span>
+                  {/* Move details: type badge + category + power */}
+                  {detail && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <TypeBadge type={detail.type} size="sm" />
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold",
+                          dmgClass?.color ?? "text-gray-400"
+                        )}
+                      >
+                        {dmgClass?.label ?? "—"}
+                      </span>
+                      {detail.power && (
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                          {detail.power}
+                        </span>
+                      )}
+                    </div>
                   )}
+
+                  {/* Level (for level-up moves) */}
+                  {!detail &&
+                    "level" in move &&
+                    (move as { level: number }).level > 0 && (
+                      <span className="text-xs text-gray-400">
+                        Lv. {(move as { level: number }).level}
+                      </span>
+                    )}
                 </button>
               );
             })}

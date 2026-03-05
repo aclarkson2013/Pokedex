@@ -5,7 +5,13 @@
  * Used for client-side data fetching before IndexedDB hydration.
  */
 
-import type { PokemonListItem, PokemonDetail, EvolutionChain } from "@/lib/db/pokemon-db";
+import type {
+  PokemonListItem,
+  PokemonDetail,
+  EvolutionChain,
+  MoveDetail,
+  LocationEncounter,
+} from "@/lib/db/pokemon-db";
 
 /** Load the master Pokemon list from static JSON. */
 export async function loadAllPokemonList(): Promise<PokemonListItem[]> {
@@ -51,5 +57,21 @@ export async function loadSearchIndex(): Promise<Array<{
 }>> {
   const res = await fetch("/data/search-index.json");
   if (!res.ok) throw new Error("Failed to load search-index.json");
+  return res.json();
+}
+
+/** Load move details from static JSON. */
+export async function loadMoves(): Promise<MoveDetail[]> {
+  const res = await fetch("/data/moves.json");
+  if (!res.ok) throw new Error("Failed to load moves.json");
+  return res.json();
+}
+
+/** Load encounter data for a specific version group. */
+export async function loadEncountersByVersionGroup(
+  slug: string
+): Promise<LocationEncounter[]> {
+  const res = await fetch(`/data/encounters/${slug}.json`);
+  if (!res.ok) return []; // Not all version groups have encounter data
   return res.json();
 }

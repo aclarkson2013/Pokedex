@@ -10,8 +10,11 @@
  *   data/evolution-chains.json  - All evolution chains
  *   data/type-effectiveness.json - Type matchup chart
  *   data/search-index.json      - Pre-built search index
+ *   data/moves.json             - Full move details (type, power, accuracy, PP)
+ *   data/encounters/{group}.json - Per-game encounter data
  *
  * Usage: npm run fetch-data
+ * Flags: --skip-moves --skip-encounters --force
  */
 
 import * as fs from "fs";
@@ -23,9 +26,40 @@ import * as path from "path";
 
 const API_BASE = "https://pokeapi.co/api/v2";
 const DATA_DIR = path.join(process.cwd(), "data");
+const PUBLIC_DATA_DIR = path.join(process.cwd(), "public", "data");
 const CONCURRENCY = 20; // max parallel requests
 const RETRY_LIMIT = 3;
 const RETRY_DELAY = 1000; // ms
+
+// CLI flags
+const args = process.argv.slice(2);
+const SKIP_MOVES = args.includes("--skip-moves");
+const SKIP_ENCOUNTERS = args.includes("--skip-encounters");
+const FORCE = args.includes("--force");
+
+// Version-to-version-group mapping (for encounter data grouping)
+const VERSION_TO_GROUP: Record<string, string> = {
+  red: "red-blue", blue: "red-blue",
+  yellow: "yellow",
+  gold: "gold-silver", silver: "gold-silver",
+  crystal: "crystal",
+  ruby: "ruby-sapphire", sapphire: "ruby-sapphire",
+  emerald: "emerald",
+  firered: "firered-leafgreen", leafgreen: "firered-leafgreen",
+  diamond: "diamond-pearl", pearl: "diamond-pearl",
+  platinum: "platinum",
+  heartgold: "heartgold-soulsilver", soulsilver: "heartgold-soulsilver",
+  black: "black-white", white: "black-white",
+  "black-2": "black2-white2", "white-2": "black2-white2",
+  x: "x-y", y: "x-y",
+  "omega-ruby": "omega-ruby-alpha-sapphire", "alpha-sapphire": "omega-ruby-alpha-sapphire",
+  sun: "sun-moon", moon: "sun-moon",
+  "ultra-sun": "ultra-sun-ultra-moon", "ultra-moon": "ultra-sun-ultra-moon",
+  "lets-go-pikachu": "lets-go", "lets-go-eevee": "lets-go",
+  sword: "sword-shield", shield: "sword-shield",
+  "legends-arceus": "legends-arceus",
+  scarlet: "scarlet-violet", violet: "scarlet-violet",
+};
 
 // Generation ranges (national dex numbers)
 const GENERATIONS: Record<number, { start: number; end: number; name: string }> = {
@@ -113,6 +147,30 @@ interface TypeEffectiveness {
     halfDamageTo: string[];
     noDamageTo: string[];
   };
+}
+
+interface MoveDetail {
+  id: number;
+  name: string;
+  type: string;
+  damageClass: string; // "physical" | "special" | "status"
+  power: number | null;
+  accuracy: number | null;
+  pp: number;
+  effectText: string;
+  effectChance: number | null;
+}
+
+interface LocationEncounter {
+  pokemonId: number;
+  pokemonName: string;
+  locationArea: string;
+  locationName: string;
+  versionName: string;
+  method: string;
+  minLevel: number;
+  maxLevel: number;
+  chance: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -487,21 +545,163 @@ async function main() {
 
   writeJson("search-index.json", searchIndex);
 
+  // ---- Step 8: Fetch move details -------------------------------------------
+  if (!SKIP_MOVES) {
+    if (!FORCE && isCacheFresh("moves.json")) {
+      console.log("\n🎯 Step 8: moves.json is fresh, skipping (use --force to override)");
+    } else {
+      console.log("\n🎯 Step 8: Fetching move details...");
+
+      // Get list of all moves
+      const moveListData: any = await fetchWithRetry(`${API_BASE}/move?limit=1000`);
+      const moveUrls: { name: string; url: string }[] = moveListData.results;
+      console.log(`  Found ${moveUrls.length} moves`);
+
+      // Fetch individual move data
+      const moveDataRaw = await batchProcess(
+        moveUrls,
+        async (m) => fetchWithRetry(m.url),
+        CONCURRENCY,
+        "Move details"
+      );
+
+      // Extract move details
+      const moveDetails: MoveDetail[] = moveDataRaw.map((raw: any) => {
+        // Find English short effect text
+        const effectEntry = raw.effect_entries?.find(
+          (e: any) => e.language.name === "en"
+        );
+        let effectText = effectEntry?.short_effect ?? "";
+        // Replace $effect_chance placeholder with actual value
+        if (raw.effect_chance != null) {
+          effectText = effectText.replace(/\$effect_chance/g, String(raw.effect_chance));
+        }
+
+        return {
+          id: raw.id,
+          name: raw.name,
+          type: raw.type?.name ?? "normal",
+          damageClass: raw.damage_class?.name ?? "status",
+          power: raw.power ?? null,
+          accuracy: raw.accuracy ?? null,
+          pp: raw.pp ?? 0,
+          effectText,
+          effectChance: raw.effect_chance ?? null,
+        };
+      });
+
+      console.log(`\n💾 Writing moves.json (${moveDetails.length} moves)...`);
+      writeJson("moves.json", moveDetails);
+    }
+  } else {
+    console.log("\n⏭️  Step 8: Skipping moves (--skip-moves)");
+  }
+
+  // ---- Step 9: Fetch encounter data -----------------------------------------
+  if (!SKIP_ENCOUNTERS) {
+    const encounterDir = path.join("encounters");
+    const firstFile = `encounters/red-blue.json`;
+    if (!FORCE && isCacheFresh(firstFile)) {
+      console.log("\n🗺️  Step 9: Encounter data is fresh, skipping (use --force to override)");
+    } else {
+      console.log("\n🗺️  Step 9: Fetching encounter data...");
+
+      // Fetch encounters for all Pokemon
+      const encountersByVersion = new Map<string, LocationEncounter[]>();
+
+      const encounterDataRaw = await batchProcess(
+        ids,
+        async (id) => {
+          try {
+            return await fetchWithRetry(`${API_BASE}/pokemon/${id}/encounters`);
+          } catch {
+            return []; // Some Pokemon have no encounter data
+          }
+        },
+        CONCURRENCY,
+        "Encounters"
+      );
+
+      // Process encounter data
+      for (let i = 0; i < ids.length; i++) {
+        const pokemonId = ids[i];
+        const pokemonName = allListItems[i]?.name ?? `pokemon-${pokemonId}`;
+        const encounters: any[] = encounterDataRaw[i] as any[] ?? [];
+
+        for (const enc of encounters) {
+          const locationArea = enc.location_area?.name ?? "";
+          const locationName = prettifyLocation(locationArea);
+
+          for (const vd of enc.version_details ?? []) {
+            const versionName = vd.version?.name ?? "";
+            const groupSlug = VERSION_TO_GROUP[versionName];
+            if (!groupSlug) continue; // Unknown version, skip
+
+            for (const ed of vd.encounter_details ?? []) {
+              const entry: LocationEncounter = {
+                pokemonId,
+                pokemonName,
+                locationArea,
+                locationName,
+                versionName,
+                method: ed.method?.name ?? "walk",
+                minLevel: ed.min_level ?? 0,
+                maxLevel: ed.max_level ?? 0,
+                chance: ed.chance ?? 0,
+              };
+
+              if (!encountersByVersion.has(groupSlug)) {
+                encountersByVersion.set(groupSlug, []);
+              }
+              encountersByVersion.get(groupSlug)!.push(entry);
+            }
+          }
+        }
+      }
+
+      // Write per-version-group encounter files
+      console.log(`\n💾 Writing encounter files...`);
+      for (const [group, encounters] of encountersByVersion) {
+        // Sort by location, then Pokemon ID
+        encounters.sort((a, b) => {
+          const locCmp = a.locationName.localeCompare(b.locationName);
+          if (locCmp !== 0) return locCmp;
+          return a.pokemonId - b.pokemonId;
+        });
+        writeJson(`encounters/${group}.json`, encounters);
+        console.log(`  encounters/${group}.json: ${encounters.length} entries`);
+      }
+    }
+  } else {
+    console.log("\n⏭️  Step 9: Skipping encounters (--skip-encounters)");
+  }
+
   // ---- Summary -------------------------------------------------------------
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log("\n========================");
   console.log(`✅ Data pipeline complete in ${elapsed}s`);
   console.log(`📁 Output directory: ${DATA_DIR}`);
 
-  // Print file sizes
-  const files = fs.readdirSync(DATA_DIR).filter((f) => f.endsWith(".json"));
+  // Print file sizes (including subdirectories)
+  printFileSizes(DATA_DIR, "");
+}
+
+function printFileSizes(dir: string, prefix: string) {
   let totalSize = 0;
-  for (const file of files) {
-    const stat = fs.statSync(path.join(DATA_DIR, file));
-    totalSize += stat.size;
-    console.log(`   ${file}: ${formatSize(stat.size)}`);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      printFileSizes(fullPath, `${prefix}${entry.name}/`);
+    } else if (entry.name.endsWith(".json")) {
+      const stat = fs.statSync(fullPath);
+      totalSize += stat.size;
+      console.log(`   ${prefix}${entry.name}: ${formatSize(stat.size)}`);
+    }
   }
-  console.log(`   Total: ${formatSize(totalSize)}`);
+  if (prefix === "") {
+    console.log(`   Total: ${formatSize(totalSize)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -509,8 +709,31 @@ async function main() {
 // ---------------------------------------------------------------------------
 
 function writeJson(filename: string, data: unknown) {
+  const rootPath = path.join(DATA_DIR, filename);
+  const publicPath = path.join(PUBLIC_DATA_DIR, filename);
+  const json = JSON.stringify(data);
+  fs.mkdirSync(path.dirname(rootPath), { recursive: true });
+  fs.mkdirSync(path.dirname(publicPath), { recursive: true });
+  fs.writeFileSync(rootPath, json);
+  fs.writeFileSync(publicPath, json);
+}
+
+/** Check if a file exists and is recent (within 24h). */
+function isCacheFresh(filename: string): boolean {
   const filePath = path.join(DATA_DIR, filename);
-  fs.writeFileSync(filePath, JSON.stringify(data));
+  if (!fs.existsSync(filePath)) return false;
+  const stat = fs.statSync(filePath);
+  const age = Date.now() - stat.mtimeMs;
+  return age < 24 * 60 * 60 * 1000; // 24 hours
+}
+
+/** Prettify a kebab-case location name. */
+function prettifyLocation(slug: string): string {
+  return slug
+    .replace(/-area$/, "")
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 function formatPokemonName(name: string): string {
