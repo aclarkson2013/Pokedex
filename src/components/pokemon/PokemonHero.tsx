@@ -29,9 +29,10 @@ export function PokemonHero({
 
   return (
     <div
-      className="relative overflow-hidden rounded-b-3xl px-6 pb-6 pt-4"
+      className="relative overflow-hidden rounded-b-3xl px-6 pb-6"
       style={{
         background: `linear-gradient(135deg, ${primaryColor}CC, ${primaryColor}88)`,
+        paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)`,
       }}
     >
       {/* Back button + navigation */}
