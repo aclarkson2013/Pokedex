@@ -5,12 +5,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserDataStore } from "@/stores/user-data-store";
+import { useTeamStore } from "@/stores/team-store";
 import { signOut, getUserProfile, type UserProfile } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils/cn";
 
 export function ProfileView() {
   const { user, isLoading, isConfigured } = useAuth();
   const { favorites, collection } = useUserDataStore();
+  const { teamCount } = useTeamStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -142,7 +144,7 @@ export function ProfileView() {
         {[
           { label: "Favorites", value: favorites.size.toString() },
           { label: "Caught", value: collection.size.toString() },
-          { label: "Teams", value: "0" },
+          { label: "Teams", value: teamCount.toString() },
         ].map((stat) => (
           <div
             key={stat.label}
