@@ -6,6 +6,8 @@
  */
 
 import { create } from "zustand";
+import { doc, updateDoc, increment } from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase/config";
 import {
   getFavorites,
   addFavorite,
@@ -80,6 +82,11 @@ export const useUserDataStore = create<UserDataState>((set, get) => ({
       } else {
         await addFavorite(uid, pokemonId);
       }
+      // Update profile counter (fire-and-forget)
+      const db = getFirebaseDb();
+      updateDoc(doc(db, "users", uid), {
+        favoritesCount: increment(isFav ? -1 : 1),
+      }).catch(() => {});
     } catch (err) {
       console.error("[UserDataStore] Toggle favorite failed:", err);
       // Revert on error
@@ -107,6 +114,11 @@ export const useUserDataStore = create<UserDataState>((set, get) => ({
       } else {
         await addToCollection(uid, pokemonId);
       }
+      // Update profile counter (fire-and-forget)
+      const db = getFirebaseDb();
+      updateDoc(doc(db, "users", uid), {
+        collectionCount: increment(isCaught ? -1 : 1),
+      }).catch(() => {});
     } catch (err) {
       console.error("[UserDataStore] Toggle caught failed:", err);
       // Revert on error

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { useUserDataStore } from "@/stores/user-data-store";
 import { useTeamStore } from "@/stores/team-store";
+import { useFriendsStore } from "@/stores/friends-store";
 import { signOut, getUserProfile, type UserProfile } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils/cn";
 
@@ -13,8 +14,10 @@ export function ProfileView() {
   const { user, isLoading, isConfigured } = useAuth();
   const { favorites, collection } = useUserDataStore();
   const { teamCount } = useTeamStore();
+  const { incomingRequests } = useFriendsStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   useEffect(() => {
     if (user && isConfigured) {
@@ -130,9 +133,27 @@ export function ProfileView() {
             {profile?.friendCode && (
               <div className="mt-1 flex items-center gap-1">
                 <span className="text-[10px] text-gray-400">Friend Code:</span>
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-mono font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
-                  {profile.friendCode}
-                </span>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(profile.friendCode);
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600"
+                >
+                  <span className="text-xs font-mono font-semibold text-gray-700 dark:text-gray-300">
+                    {profile.friendCode}
+                  </span>
+                  {codeCopied ? (
+                    <svg className="h-3 w-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <svg className="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -161,10 +182,10 @@ export function ProfileView() {
       {/* Menu items */}
       <div className="mt-4 rounded-2xl bg-white shadow-sm dark:bg-gray-800 overflow-hidden">
         {[
-          { label: "My Favorites", icon: "⭐", href: "/profile/favorites", soon: false },
-          { label: "My Collection", icon: "📊", href: "/profile/collection", soon: false },
-          { label: "My Teams", icon: "👥", href: "/teams", soon: false },
-          { label: "Friends", icon: "🤝", href: "/profile/friends", soon: true },
+          { label: "My Favorites", icon: "⭐", href: "/profile/favorites", badge: 0 },
+          { label: "My Collection", icon: "📊", href: "/profile/collection", badge: 0 },
+          { label: "My Teams", icon: "👥", href: "/teams", badge: 0 },
+          { label: "Friends", icon: "🤝", href: "/profile/friends", badge: incomingRequests.length },
         ].map((item, idx) => (
           <Link
             key={item.label}
@@ -178,9 +199,9 @@ export function ProfileView() {
             <span className="flex-1 text-sm font-medium text-gray-800 dark:text-gray-100">
               {item.label}
             </span>
-            {item.soon && (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500 dark:bg-gray-700 dark:text-gray-400">
-                Soon
+            {item.badge > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                {item.badge}
               </span>
             )}
             <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

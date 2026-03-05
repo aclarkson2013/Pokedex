@@ -8,6 +8,7 @@ import { getPokemonById } from "@/lib/db/pokemon-db";
 import { TeamSlot } from "./TeamSlot";
 import { PokemonPicker } from "./PokemonPicker";
 import { MemberEditor } from "./MemberEditor";
+import { ShareTeamButton } from "./ShareTeamButton";
 import type { TeamMember, TeamDocument } from "@/lib/firebase/teams";
 import type { PokemonListItem } from "@/lib/db/pokemon-db";
 
@@ -168,13 +169,21 @@ export function TeamEditor({ team }: TeamEditorProps) {
             <span className="text-sm font-medium">Back</span>
           </button>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-red-500 px-5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
+          <div className="flex items-center gap-2">
+            {team && (
+              <ShareTeamButton
+                teamName={name.trim() || "Unnamed Team"}
+                members={members.filter((m): m is TeamMember => m !== null)}
+              />
+            )}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-lg bg-red-500 px-5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
         </div>
 
         <div className="px-4 py-4">

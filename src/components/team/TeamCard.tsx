@@ -7,16 +7,25 @@ import type { TeamDocument } from "@/lib/firebase/teams";
 
 interface TeamCardProps {
   team: TeamDocument;
+  /** When true, card is not clickable (used on friend profiles). */
+  readOnly?: boolean;
 }
 
-export function TeamCard({ team }: TeamCardProps) {
+export function TeamCard({ team, readOnly }: TeamCardProps) {
   // Pad to 6 slots
   const slots = Array.from({ length: 6 }, (_, i) => team.members[i] ?? null);
 
+  const Wrapper = readOnly ? "div" : Link;
+  const wrapperProps = readOnly
+    ? {}
+    : { href: `/teams/${team.id}` };
+
   return (
-    <Link
-      href={`/teams/${team.id}`}
-      className="block rounded-2xl bg-white p-4 shadow-sm transition-all hover:shadow-md active:scale-[0.98] dark:bg-gray-800"
+    <Wrapper
+      {...(wrapperProps as any)}
+      className={`block rounded-2xl bg-white p-4 shadow-sm dark:bg-gray-800 ${
+        readOnly ? "" : "transition-all hover:shadow-md active:scale-[0.98]"
+      }`}
     >
       {/* Team name + visibility */}
       <div className="flex items-center justify-between">
@@ -88,7 +97,7 @@ export function TeamCard({ team }: TeamCardProps) {
           ))}
         </div>
       )}
-    </Link>
+    </Wrapper>
   );
 }
 

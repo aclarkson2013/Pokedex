@@ -6,6 +6,8 @@
  */
 
 import { create } from "zustand";
+import { doc, updateDoc, increment } from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase/config";
 import {
   getTeams,
   createTeam,
@@ -79,6 +81,11 @@ export const useTeamStore = create<TeamStoreState>((set, get) => ({
           t.id === tempId ? { ...t, id: realId } : t
         ),
       });
+      // Update profile counter (fire-and-forget)
+      const db = getFirebaseDb();
+      updateDoc(doc(db, "users", uid), {
+        teamCount: increment(1),
+      }).catch(() => {});
       return realId;
     } catch (err) {
       console.error("[TeamStore] Failed to create team:", err);
@@ -121,6 +128,11 @@ export const useTeamStore = create<TeamStoreState>((set, get) => ({
 
     try {
       await deleteTeam(uid, teamId);
+      // Update profile counter (fire-and-forget)
+      const db = getFirebaseDb();
+      updateDoc(doc(db, "users", uid), {
+        teamCount: increment(-1),
+      }).catch(() => {});
     } catch (err) {
       console.error("[TeamStore] Failed to delete team:", err);
       // Revert

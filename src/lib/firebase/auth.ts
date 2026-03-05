@@ -14,7 +14,17 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  limit,
+} from "firebase/firestore";
 import { getFirebaseAuth, getFirebaseDb } from "./config";
 
 // ---------------------------------------------------------------------------
@@ -29,6 +39,9 @@ export interface UserProfile {
   createdAt: unknown; // Firestore Timestamp
   lastLoginAt: unknown;
   friendCode: string;
+  collectionCount: number;
+  favoritesCount: number;
+  teamCount: number;
 }
 
 function generateFriendCode(): string {
@@ -61,6 +74,9 @@ async function upsertUserProfile(user: User): Promise<void> {
       createdAt: serverTimestamp(),
       lastLoginAt: serverTimestamp(),
       friendCode: generateFriendCode(),
+      collectionCount: 0,
+      favoritesCount: 0,
+      teamCount: 0,
     };
     await setDoc(ref, profile);
   }
@@ -140,4 +156,21 @@ export async function getUserProfile(
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as UserProfile) : null;
+}
+
+/**
+ * Look up a user profile by friend code.
+ */
+export async function getUserProfileByFriendCode(
+  code: string
+): Promise<UserProfile | null> {
+  const db = getFirebaseDb();
+  const q = query(
+    collection(db, "users"),
+    where("friendCode", "==", code.toUpperCase()),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].data() as UserProfile;
 }
