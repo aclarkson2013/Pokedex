@@ -4,11 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
+import { useUserDataStore } from "@/stores/user-data-store";
 import { signOut, getUserProfile, type UserProfile } from "@/lib/firebase/auth";
 import { cn } from "@/lib/utils/cn";
 
 export function ProfileView() {
   const { user, isLoading, isConfigured } = useAuth();
+  const { favorites, collection } = useUserDataStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -135,11 +137,11 @@ export function ProfileView() {
         </div>
       </div>
 
-      {/* Stats (placeholder — will be populated in Phase 4) */}
+      {/* Stats */}
       <div className="mt-4 grid grid-cols-3 gap-3">
         {[
-          { label: "Favorites", value: "0" },
-          { label: "Caught", value: "0" },
+          { label: "Favorites", value: favorites.size.toString() },
+          { label: "Caught", value: collection.size.toString() },
           { label: "Teams", value: "0" },
         ].map((stat) => (
           <div
@@ -157,8 +159,8 @@ export function ProfileView() {
       {/* Menu items */}
       <div className="mt-4 rounded-2xl bg-white shadow-sm dark:bg-gray-800 overflow-hidden">
         {[
-          { label: "My Favorites", icon: "⭐", href: "/profile/favorites", soon: true },
-          { label: "My Collection", icon: "📊", href: "/profile/collection", soon: true },
+          { label: "My Favorites", icon: "⭐", href: "/profile/favorites", soon: false },
+          { label: "My Collection", icon: "📊", href: "/profile/collection", soon: false },
           { label: "My Teams", icon: "👥", href: "/teams", soon: false },
           { label: "Friends", icon: "🤝", href: "/profile/friends", soon: true },
         ].map((item, idx) => (

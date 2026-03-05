@@ -2,6 +2,7 @@
 
 import * as Tabs from "@radix-ui/react-tabs";
 import { PokemonHero } from "./PokemonHero";
+import { PokemonActions } from "./PokemonActions";
 import { AboutTab } from "./AboutTab";
 import { StatsTab } from "./StatsTab";
 import { EvolutionTab } from "./EvolutionTab";
@@ -70,8 +71,13 @@ export function PokemonDetail({ pokemon, totalPokemon }: PokemonDetailProps) {
         totalPokemon={totalPokemon}
       />
 
+      {/* Favorite / Caught buttons */}
+      <div className="px-4 mt-3 mb-2">
+        <PokemonActions pokemonId={pokemon.id} />
+      </div>
+
       {/* Tabbed content */}
-      <Tabs.Root defaultValue="about" className="px-4 -mt-2 relative z-10">
+      <Tabs.Root defaultValue="about" className="px-4 relative z-10">
         <Tabs.List className="flex rounded-xl bg-white p-1 shadow-sm dark:bg-gray-800 mb-4">
           {TAB_ITEMS.map((tab) => (
             <Tabs.Trigger

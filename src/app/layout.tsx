@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { DataProvider } from "@/providers/DataProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { UserDataProvider } from "@/providers/UserDataProvider";
 import { BottomNav } from "@/components/layout/BottomNav";
 import "./globals.css";
 
@@ -40,10 +41,12 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-gray-50 dark:bg-gray-900">
         <AuthProvider>
-          <DataProvider>
-            <div className="pb-16">{children}</div>
-            <BottomNav />
-          </DataProvider>
+          <UserDataProvider>
+            <DataProvider>
+              <div className="pb-16">{children}</div>
+              <BottomNav />
+            </DataProvider>
+          </UserDataProvider>
         </AuthProvider>
       </body>
     </html>
