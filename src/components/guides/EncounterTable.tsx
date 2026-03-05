@@ -32,37 +32,37 @@ export function EncounterTable({
           key={method}
           className="overflow-hidden rounded-xl bg-white shadow-sm dark:bg-gray-800"
         >
-          <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-750">
-            <h4 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider dark:text-gray-400">
+          <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-750">
+            <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider dark:text-gray-400">
               🌿 Available Pokémon — {method}
             </h4>
           </div>
 
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1 px-3 py-1.5 text-[9px] font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-4 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500">
             <span>Pokémon</span>
             <span className="w-14 text-center">Games</span>
-            <span className="w-12 text-center">Levels</span>
-            <span className="w-10 text-center">Rate</span>
+            <span className="w-14 text-center">Levels</span>
+            <span className="w-12 text-center">Rate</span>
           </div>
 
           {/* Rows */}
           {encs.map((enc, i) => (
             <div
               key={`${enc.pokemon}-${i}`}
-              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1 border-t border-gray-50 px-3 py-1.5 dark:border-gray-700/50"
+              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 border-t border-gray-50 px-4 py-2 dark:border-gray-700/50"
             >
               <button
                 onClick={() => onPokemonClick(enc.pokemonId)}
-                className="flex items-center gap-1.5 text-left text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400"
+                className="flex items-center gap-2 text-left text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400"
               >
-                <div className="relative h-6 w-6 shrink-0">
+                <div className="relative h-7 w-7 shrink-0">
                   <Image
                     src={getSpriteUrl(enc.pokemonId)}
                     alt={enc.pokemon}
                     fill
                     className="object-contain pixelated"
-                    sizes="24px"
+                    sizes="28px"
                     unoptimized
                   />
                 </div>
@@ -74,21 +74,21 @@ export function EncounterTable({
                     key={tag}
                     className={
                       enc.games.includes(tag)
-                        ? "rounded px-1 py-0.5 text-[8px] font-bold text-white " +
+                        ? "rounded px-1.5 py-0.5 text-[9px] font-bold text-white " +
                           (tag === "FR" || tag === "R" || tag === "OR"
                             ? "bg-red-500"
                             : "bg-green-600")
-                        : "rounded px-1 py-0.5 text-[8px] font-bold text-gray-300 bg-gray-100 dark:text-gray-600 dark:bg-gray-700"
+                        : "rounded px-1.5 py-0.5 text-[9px] font-bold text-gray-300 bg-gray-100 dark:text-gray-600 dark:bg-gray-700"
                     }
                   >
                     {tag}
                   </span>
                 ))}
               </div>
-              <span className="w-12 text-center text-[11px] text-gray-600 dark:text-gray-400">
+              <span className="w-14 text-center text-xs text-gray-600 dark:text-gray-400">
                 {enc.levels}
               </span>
-              <span className="w-10 text-center text-[11px] font-medium text-gray-700 dark:text-gray-300">
+              <span className="w-12 text-center text-xs font-medium text-gray-700 dark:text-gray-300">
                 {enc.rate}
               </span>
             </div>

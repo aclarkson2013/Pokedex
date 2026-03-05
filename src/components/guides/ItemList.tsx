@@ -9,18 +9,18 @@ export function ItemList({ items }: ItemListProps) {
 
   return (
     <div className="overflow-hidden rounded-xl bg-white shadow-sm dark:bg-gray-800">
-      <div className="border-b border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-750">
-        <h4 className="text-[11px] font-bold text-gray-600 uppercase tracking-wider dark:text-gray-400">
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-750">
+        <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wider dark:text-gray-400">
           🎒 Items
         </h4>
       </div>
       <div className="divide-y divide-gray-50 dark:divide-gray-700/50">
         {items.map((itm, i) => (
-          <div key={`${itm.name}-${i}`} className="flex items-start gap-2 px-3 py-2">
-            <span className="text-xs font-semibold text-gray-900 dark:text-white shrink-0">
+          <div key={`${itm.name}-${i}`} className="flex items-start gap-2 px-4 py-2.5">
+            <span className="text-sm font-semibold text-gray-900 dark:text-white shrink-0">
               {itm.name}
             </span>
-            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400 pt-0.5">
               — {itm.location}
             </span>
           </div>

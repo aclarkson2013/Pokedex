@@ -35,13 +35,13 @@ export function GameCard({ guide }: GameCardProps) {
 
       {/* Info */}
       <div className="p-3">
-        {/* Starters */}
-        <div className="flex gap-1 mb-2">
+        {/* Starters — wrap so names don't get cropped */}
+        <div className="flex flex-wrap gap-1 mb-2">
           {guide.starters.map((s) => (
             <span
               key={s.name}
               className={cn(
-                "rounded-full px-2 py-0.5 text-[9px] font-medium capitalize text-white",
+                "rounded-full px-2 py-0.5 text-[9px] font-medium capitalize text-white whitespace-nowrap",
                 TYPE_COLORS[s.type]?.bg || "bg-gray-400"
               )}
             >
