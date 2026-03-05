@@ -35,6 +35,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [editingMember, setEditingMember] = useState<{
@@ -111,6 +112,7 @@ export function TeamEditor({ team }: TeamEditorProps) {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
+    setError(null);
 
     const input = {
       name: name.trim() || "Unnamed Team",
@@ -127,6 +129,8 @@ export function TeamEditor({ team }: TeamEditorProps) {
       router.push("/teams");
     } catch (err) {
       console.error("[TeamEditor] Save failed:", err);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(`Failed to save team: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -174,6 +178,24 @@ export function TeamEditor({ team }: TeamEditorProps) {
         </div>
 
         <div className="px-4 py-4">
+          {/* Error banner */}
+          {error && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 dark:bg-red-900/20">
+              <svg className="mt-0.5 h-4 w-4 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              <p className="flex-1 text-xs text-red-700 dark:text-red-300">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="text-red-400 hover:text-red-600"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {/* Team name */}
           <input
             type="text"
