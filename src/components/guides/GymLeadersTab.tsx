@@ -1,5 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 import { TYPE_COLORS } from "@/lib/pokemon/type-colors";
+import { getSpriteUrl, loadNameToIdMap, pokemonNameToId } from "@/lib/pokemon/sprite-utils";
 import type { GymLeader } from "@/lib/pokemon/game-data";
 
 interface GymLeadersTabProps {
@@ -8,6 +13,12 @@ interface GymLeadersTabProps {
 }
 
 export function GymLeadersTab({ gymLeaders, isTrials }: GymLeadersTabProps) {
+  const [nameMapLoaded, setNameMapLoaded] = useState(false);
+
+  useEffect(() => {
+    loadNameToIdMap().then(() => setNameMapLoaded(true));
+  }, []);
+
   if (gymLeaders.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -55,20 +66,35 @@ export function GymLeadersTab({ gymLeaders, isTrials }: GymLeadersTabProps) {
               </div>
             </div>
 
-            {/* Pokemon */}
+            {/* Pokemon with sprites */}
             <div className="border-t border-gray-100 px-4 py-2 dark:border-gray-700">
               <div className="flex flex-wrap gap-1.5">
-                {leader.pokemon.map((poke, j) => (
-                  <span
-                    key={`${poke.name}-${j}`}
-                    className="rounded-lg bg-gray-50 px-2 py-1 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                  >
-                    {poke.name}{" "}
-                    <span className="font-semibold text-gray-500 dark:text-gray-400">
-                      Lv.{poke.level}
+                {leader.pokemon.map((poke, j) => {
+                  const pokeId = nameMapLoaded ? pokemonNameToId(poke.name) : 0;
+                  return (
+                    <span
+                      key={`${poke.name}-${j}`}
+                      className="flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+                    >
+                      {pokeId > 0 && (
+                        <span className="relative h-5 w-5 shrink-0 inline-block">
+                          <Image
+                            src={getSpriteUrl(pokeId)}
+                            alt={poke.name}
+                            fill
+                            className="object-contain pixelated"
+                            sizes="20px"
+                            unoptimized
+                          />
+                        </span>
+                      )}
+                      {poke.name}{" "}
+                      <span className="font-semibold text-gray-500 dark:text-gray-400">
+                        Lv.{poke.level}
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

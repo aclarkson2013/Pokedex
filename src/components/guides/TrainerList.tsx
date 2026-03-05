@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { getSpriteUrl } from "@/lib/pokemon/sprite-utils";
 import type { WalkthroughTrainer } from "@/lib/pokemon/walkthroughs";
 
 interface TrainerListProps {
@@ -56,8 +58,18 @@ export function TrainerList({ trainers, onPokemonClick }: TrainerListProps) {
                   <button
                     key={`${poke.name}-${j}`}
                     onClick={() => onPokemonClick(poke.pokemonId)}
-                    className="rounded-md bg-gray-50 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 hover:text-blue-800 hover:underline dark:bg-gray-700 dark:text-blue-400 dark:hover:bg-blue-900/30"
+                    className="flex items-center gap-1 rounded-md bg-gray-50 px-1.5 py-0.5 text-[10px] text-blue-600 hover:bg-blue-50 hover:text-blue-800 hover:underline dark:bg-gray-700 dark:text-blue-400 dark:hover:bg-blue-900/30"
                   >
+                    <div className="relative h-5 w-5 shrink-0">
+                      <Image
+                        src={getSpriteUrl(poke.pokemonId)}
+                        alt={poke.name}
+                        fill
+                        className="object-contain pixelated"
+                        sizes="20px"
+                        unoptimized
+                      />
+                    </div>
                     {poke.name}{" "}
                     <span className="font-semibold text-gray-500 dark:text-gray-400">
                       Lv.{poke.level}

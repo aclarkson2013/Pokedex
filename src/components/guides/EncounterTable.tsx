@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { getSpriteUrl } from "@/lib/pokemon/sprite-utils";
 import type { WalkthroughEncounter } from "@/lib/pokemon/walkthroughs";
 
 interface EncounterTableProps {
@@ -37,7 +39,7 @@ export function EncounterTable({
           </div>
 
           {/* Table header */}
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-1 px-3 py-1.5 text-[9px] font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-1 px-3 py-1.5 text-[9px] font-semibold text-gray-400 uppercase tracking-wider dark:text-gray-500">
             <span>Pokémon</span>
             <span className="w-14 text-center">Games</span>
             <span className="w-12 text-center">Levels</span>
@@ -48,12 +50,22 @@ export function EncounterTable({
           {encs.map((enc, i) => (
             <div
               key={`${enc.pokemon}-${i}`}
-              className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-1 border-t border-gray-50 px-3 py-2 dark:border-gray-700/50"
+              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-1 border-t border-gray-50 px-3 py-1.5 dark:border-gray-700/50"
             >
               <button
                 onClick={() => onPokemonClick(enc.pokemonId)}
-                className="text-left text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400"
+                className="flex items-center gap-1.5 text-left text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400"
               >
+                <div className="relative h-6 w-6 shrink-0">
+                  <Image
+                    src={getSpriteUrl(enc.pokemonId)}
+                    alt={enc.pokemon}
+                    fill
+                    className="object-contain pixelated"
+                    sizes="24px"
+                    unoptimized
+                  />
+                </div>
                 {enc.pokemon}
               </button>
               <div className="flex w-14 justify-center gap-0.5">

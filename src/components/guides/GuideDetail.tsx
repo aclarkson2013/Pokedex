@@ -4,11 +4,11 @@ import * as Tabs from "@radix-ui/react-tabs";
 import { GuideHero } from "./GuideHero";
 import { GymLeadersTab } from "./GymLeadersTab";
 import { EliteFourTab } from "./EliteFourTab";
-import { LegendariesTab } from "./LegendariesTab";
-import { TipsTab } from "./TipsTab";
+import { DexTab } from "./DexTab";
 import { WalkthroughTab } from "./WalkthroughTab";
 import { cn } from "@/lib/utils/cn";
 import { getWalkthrough, hasWalkthrough } from "@/lib/pokemon/walkthroughs";
+import { getGameDex, hasGameDex } from "@/lib/pokemon/game-dex";
 import type { GameGuide } from "@/lib/pokemon/game-data";
 
 interface GuideDetailProps {
@@ -23,13 +23,15 @@ export function GuideDetail({ guide }: GuideDetailProps) {
   const walkthrough = getWalkthrough(guide.slug);
   const showWalkthrough = hasWalkthrough(guide.slug);
 
-  // Build tab list — walkthrough first if available
+  const gameDex = getGameDex(guide.slug);
+  const showDex = hasGameDex(guide.slug);
+
+  // Build tab list — walkthrough first if available, then gyms, e4, dex
   const TAB_ITEMS = [
     ...(showWalkthrough ? [{ value: "walkthrough", label: "Walkthrough" }] : []),
     { value: "gyms", label: gymLabel },
     { value: "elite-four", label: "Elite Four" },
-    { value: "legendaries", label: "Legendaries" },
-    { value: "tips", label: "Tips" },
+    ...(showDex ? [{ value: "dex", label: "Dex" }] : []),
   ];
 
   const defaultTab = showWalkthrough ? "walkthrough" : "gyms";
@@ -70,13 +72,11 @@ export function GuideDetail({ guide }: GuideDetailProps) {
           <EliteFourTab eliteFour={guide.eliteFour} champion={guide.champion} />
         </Tabs.Content>
 
-        <Tabs.Content value="legendaries" className="pb-24">
-          <LegendariesTab legendaries={guide.legendaries} />
-        </Tabs.Content>
-
-        <Tabs.Content value="tips" className="pb-24">
-          <TipsTab tips={guide.tips} features={guide.features} />
-        </Tabs.Content>
+        {showDex && gameDex && (
+          <Tabs.Content value="dex" className="pb-24">
+            <DexTab dex={gameDex} />
+          </Tabs.Content>
+        )}
       </Tabs.Root>
     </div>
   );

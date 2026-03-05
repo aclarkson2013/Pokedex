@@ -1,5 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 import { TYPE_COLORS } from "@/lib/pokemon/type-colors";
+import { getSpriteUrl, loadNameToIdMap, pokemonNameToId } from "@/lib/pokemon/sprite-utils";
 import type { EliteFourMember } from "@/lib/pokemon/game-data";
 
 interface EliteFourTabProps {
@@ -8,6 +13,12 @@ interface EliteFourTabProps {
 }
 
 export function EliteFourTab({ eliteFour, champion }: EliteFourTabProps) {
+  const [nameMapLoaded, setNameMapLoaded] = useState(false);
+
+  useEffect(() => {
+    loadNameToIdMap().then(() => setNameMapLoaded(true));
+  }, []);
+
   return (
     <div className="space-y-3">
       {/* Elite Four */}
@@ -17,7 +28,7 @@ export function EliteFourTab({ eliteFour, champion }: EliteFourTabProps) {
             Elite Four
           </h3>
           {eliteFour.map((member, i) => (
-            <MemberCard key={`e4-${member.name}-${i}`} member={member} index={i + 1} />
+            <MemberCard key={`e4-${member.name}-${i}`} member={member} index={i + 1} nameMapLoaded={nameMapLoaded} />
           ))}
         </>
       )}
@@ -45,17 +56,32 @@ export function EliteFourTab({ eliteFour, champion }: EliteFourTabProps) {
         </div>
         <div className="border-t border-yellow-200/60 px-4 py-2 dark:border-yellow-700/30">
           <div className="flex flex-wrap gap-1.5">
-            {champion.pokemon.map((poke, j) => (
-              <span
-                key={`champ-${poke.name}-${j}`}
-                className="rounded-lg bg-yellow-100/60 px-2 py-1 text-[10px] text-gray-700 dark:bg-yellow-800/30 dark:text-gray-300"
-              >
-                {poke.name}{" "}
-                <span className="font-semibold text-gray-500 dark:text-gray-400">
-                  Lv.{poke.level}
+            {champion.pokemon.map((poke, j) => {
+              const pokeId = nameMapLoaded ? pokemonNameToId(poke.name) : 0;
+              return (
+                <span
+                  key={`champ-${poke.name}-${j}`}
+                  className="flex items-center gap-1 rounded-lg bg-yellow-100/60 px-2 py-1 text-[10px] text-gray-700 dark:bg-yellow-800/30 dark:text-gray-300"
+                >
+                  {pokeId > 0 && (
+                    <span className="relative h-5 w-5 shrink-0 inline-block">
+                      <Image
+                        src={getSpriteUrl(pokeId)}
+                        alt={poke.name}
+                        fill
+                        className="object-contain pixelated"
+                        sizes="20px"
+                        unoptimized
+                      />
+                    </span>
+                  )}
+                  {poke.name}{" "}
+                  <span className="font-semibold text-gray-500 dark:text-gray-400">
+                    Lv.{poke.level}
+                  </span>
                 </span>
-              </span>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -67,9 +93,11 @@ export function EliteFourTab({ eliteFour, champion }: EliteFourTabProps) {
 function MemberCard({
   member,
   index,
+  nameMapLoaded,
 }: {
   member: EliteFourMember;
   index: number;
+  nameMapLoaded: boolean;
 }) {
   const mainType = member.type.split("/")[0];
   return (
@@ -101,17 +129,32 @@ function MemberCard({
       </div>
       <div className="border-t border-gray-100 px-4 py-2 dark:border-gray-700">
         <div className="flex flex-wrap gap-1.5">
-          {member.pokemon.map((poke, j) => (
-            <span
-              key={`${poke.name}-${j}`}
-              className="rounded-lg bg-gray-50 px-2 py-1 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-            >
-              {poke.name}{" "}
-              <span className="font-semibold text-gray-500 dark:text-gray-400">
-                Lv.{poke.level}
+          {member.pokemon.map((poke, j) => {
+            const pokeId = nameMapLoaded ? pokemonNameToId(poke.name) : 0;
+            return (
+              <span
+                key={`${poke.name}-${j}`}
+                className="flex items-center gap-1 rounded-lg bg-gray-50 px-2 py-1 text-[10px] text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+              >
+                {pokeId > 0 && (
+                  <span className="relative h-5 w-5 shrink-0 inline-block">
+                    <Image
+                      src={getSpriteUrl(pokeId)}
+                      alt={poke.name}
+                      fill
+                      className="object-contain pixelated"
+                      sizes="20px"
+                      unoptimized
+                    />
+                  </span>
+                )}
+                {poke.name}{" "}
+                <span className="font-semibold text-gray-500 dark:text-gray-400">
+                  Lv.{poke.level}
+                </span>
               </span>
-            </span>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
