@@ -26,10 +26,10 @@ const LEARN_METHOD_LABELS: Record<string, string> = {
 
 const LEARN_METHOD_ORDER = ["level-up", "machine", "egg", "tutor"];
 
-const DAMAGE_CLASS_ICONS: Record<string, { label: string; color: string }> = {
-  physical: { label: "PHY", color: "text-orange-500" },
-  special: { label: "SPE", color: "text-blue-500" },
-  status: { label: "STA", color: "text-gray-500" },
+const DAMAGE_CLASS_ICONS: Record<string, { label: string; color: string; bg: string }> = {
+  physical: { label: "PHY", color: "text-orange-700 dark:text-orange-300", bg: "bg-orange-100 dark:bg-orange-900/40" },
+  special: { label: "SPE", color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100 dark:bg-blue-900/40" },
+  status: { label: "STA", color: "text-gray-600 dark:text-gray-300", bg: "bg-gray-100 dark:bg-gray-700" },
 };
 
 export function MovesTab({ moves }: MovesTabProps) {
@@ -116,6 +116,11 @@ export function MovesTab({ moves }: MovesTabProps) {
               Lv.
             </span>
           )}
+          {activeMethod === "machine" && hasMoveDetails && (
+            <span className="w-14 text-[10px] font-semibold uppercase text-gray-500 dark:text-gray-400">
+              TM
+            </span>
+          )}
           <span className="flex-1 text-[10px] font-semibold uppercase text-gray-500 dark:text-gray-400">
             Move
           </span>
@@ -164,11 +169,16 @@ export function MovesTab({ moves }: MovesTabProps) {
                   )}
                 >
                   {activeMethod === "level-up" && (
-                    <span className="w-10 text-xs font-medium text-gray-500 dark:text-gray-400">
+                    <span className="w-10 text-xs font-semibold text-gray-600 dark:text-gray-300">
                       {move.levelLearnedAt > 0 ? move.levelLearnedAt : "—"}
                     </span>
                   )}
-                  <span className="flex-1 text-sm text-gray-800 dark:text-gray-100 truncate pr-1">
+                  {activeMethod === "machine" && hasMoveDetails && (
+                    <span className="w-14 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                      {detail?.tmNumber ?? "—"}
+                    </span>
+                  )}
+                  <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-50 truncate pr-1">
                     {formatMoveName(move.name)}
                   </span>
                   {hasMoveDetails && detail && (
@@ -178,26 +188,32 @@ export function MovesTab({ moves }: MovesTabProps) {
                       </span>
                       <span
                         className={cn(
-                          "w-8 text-center text-[10px] font-bold",
-                          dmgClass?.color ?? "text-gray-400"
+                          "w-8 flex items-center justify-center",
                         )}
                         title={detail.damageClass}
                       >
-                        {dmgClass?.label ?? "—"}
+                        <span className={cn(
+                          "rounded px-1 py-0.5 text-[9px] font-bold leading-none",
+                          dmgClass?.color ?? "text-gray-400",
+                          dmgClass?.bg ?? ""
+                        )}>
+                          {dmgClass?.label ?? "—"}
+                        </span>
                       </span>
-                      <span className="w-10 text-right text-xs text-gray-700 dark:text-gray-300">
+                      <span className="w-10 text-right text-xs font-medium text-gray-800 dark:text-gray-200">
                         {detail.power ?? "—"}
                       </span>
                       <span className="w-10 text-right text-xs text-gray-700 dark:text-gray-300">
                         {detail.accuracy ? `${detail.accuracy}%` : "—"}
                       </span>
-                      <span className="w-8 text-right text-xs text-gray-500 dark:text-gray-400">
+                      <span className="w-8 text-right text-xs text-gray-600 dark:text-gray-400">
                         {detail.pp || "—"}
                       </span>
                     </>
                   )}
                   {hasMoveDetails && !detail && (
                     <>
+                      {activeMethod !== "machine" && <></>}
                       <span className="w-14" />
                       <span className="w-8" />
                       <span className="w-10" />

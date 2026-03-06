@@ -102,7 +102,7 @@ export function ProfileView() {
   }
 
   return (
-    <main className="min-h-screen p-4">
+    <main className="min-h-screen p-4" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}>
       {/* Profile header */}
       <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-gray-800">
         <div className="flex items-center gap-4">

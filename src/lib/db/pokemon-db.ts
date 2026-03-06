@@ -93,6 +93,7 @@ export interface MoveDetail {
   pp: number;
   effectText: string;
   effectChance: number | null;
+  tmNumber: string | null; // e.g. "TM001", "HM01"
 }
 
 export interface LocationEncounter {

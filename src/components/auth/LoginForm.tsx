@@ -34,7 +34,7 @@ export function LoginForm() {
   // Show message if Firebase is not configured
   if (!isConfigured) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6">
+      <main className="flex min-h-screen flex-col items-center justify-center p-6" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1.5rem)` }}>
         <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-800">
           <h1 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-4">
             Authentication
@@ -132,7 +132,7 @@ export function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50 dark:bg-gray-900">
+    <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-50 dark:bg-gray-900" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1.5rem)` }}>
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-6 text-center">

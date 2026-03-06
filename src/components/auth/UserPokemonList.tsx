@@ -121,7 +121,7 @@ export function UserPokemonList({ type }: UserPokemonListProps) {
 
   /* ── Main view ───────────────────────────────────────── */
   return (
-    <main className="min-h-screen p-4">
+    <main className="min-h-screen p-4" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}>
       {/* Header */}
       <div className="mb-4 flex items-center gap-3">
         <Link

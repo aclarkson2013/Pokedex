@@ -10,7 +10,7 @@ export function GuidesHome() {
   ).sort((a, b) => a - b);
 
   return (
-    <main className="min-h-screen p-4 pb-20">
+    <main className="min-h-screen p-4 pb-20" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Game Guides

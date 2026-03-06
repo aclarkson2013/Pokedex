@@ -66,9 +66,25 @@ export function AddFriendModal({ isOpen, onClose }: AddFriendModalProps) {
       }
 
       setFoundUser(profile);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("[AddFriend] Lookup failed:", err);
-      setError("Something went wrong. Please try again.");
+      // Provide specific error messages based on the error type
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const errCode = (err as { code?: string })?.code;
+
+      if (errCode === "permission-denied" || errMsg.includes("permission")) {
+        setError(
+          "Unable to search users. Your Firestore security rules may need to allow reading the users collection. Check the console for details."
+        );
+      } else if (errCode === "failed-precondition" || errMsg.includes("index")) {
+        setError(
+          "Database setup required. Check the browser console for a link to create the required Firestore index."
+        );
+      } else if (errCode === "unavailable" || errMsg.includes("network") || errMsg.includes("offline")) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setSearching(false);
     }

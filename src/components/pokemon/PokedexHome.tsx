@@ -53,7 +53,7 @@ export function PokedexHome() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen flex-col p-4">
+      <main className="flex min-h-screen flex-col p-4" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}>
         {/* Header skeleton */}
         <div className="mb-4 flex items-center justify-between">
           <div className="h-8 w-28 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
@@ -75,7 +75,7 @@ export function PokedexHome() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col p-4">
+    <main className="flex min-h-screen flex-col p-4" style={{ paddingTop: `calc(env(safe-area-inset-top, 0px) + 1rem)` }}>
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

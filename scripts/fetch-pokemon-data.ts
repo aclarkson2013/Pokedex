@@ -570,6 +570,67 @@ async function main() {
         "Move details"
       );
 
+      // Collect machine URLs for TM/HM number lookup (latest version group only)
+      const preferredMachineVersions = [
+        "scarlet-violet",
+        "sword-shield",
+        "ultra-sun-ultra-moon",
+        "sun-moon",
+        "omega-ruby-alpha-sapphire",
+        "x-y",
+      ];
+
+      const machineUrlMap = new Map<string, string>(); // machineUrl → moveName
+      for (const raw of moveDataRaw as any[]) {
+        const machines: any[] = raw.machines ?? [];
+        // Find the best machine entry (latest version group)
+        let bestMachine: any = null;
+        for (const pref of preferredMachineVersions) {
+          bestMachine = machines.find(
+            (m: any) => m.version_group?.name === pref
+          );
+          if (bestMachine) break;
+        }
+        if (bestMachine) {
+          const url = bestMachine.machine?.url;
+          if (url) machineUrlMap.set(url, raw.name);
+        }
+      }
+
+      // Fetch machine data to get TM/HM numbers
+      const tmNumberMap = new Map<string, string>(); // moveName → "TM001" / "HM01"
+      if (machineUrlMap.size > 0) {
+        console.log(`\n  Fetching ${machineUrlMap.size} machine endpoints for TM numbers...`);
+        const machineEntries = Array.from(machineUrlMap.entries());
+        const machineDataRaw = await batchProcess(
+          machineEntries,
+          async ([url]) => {
+            try {
+              return await fetchWithRetry(url);
+            } catch {
+              return null;
+            }
+          },
+          CONCURRENCY,
+          "TM numbers"
+        );
+
+        for (let i = 0; i < machineEntries.length; i++) {
+          const [, moveName] = machineEntries[i];
+          const data = machineDataRaw[i] as any;
+          if (!data) continue;
+          const itemName: string = data.item?.name ?? "";
+          // Item names are like "tm001", "tm171", "hm01", "tr00"
+          const tmMatch = itemName.match(/^(tm|hm|tr)(\d+)$/i);
+          if (tmMatch) {
+            const prefix = tmMatch[1].toUpperCase();
+            const num = tmMatch[2];
+            tmNumberMap.set(moveName, `${prefix}${num}`);
+          }
+        }
+        console.log(`  Mapped ${tmNumberMap.size} moves to TM/HM/TR numbers`);
+      }
+
       // Extract move details
       const moveDetails: MoveDetail[] = moveDataRaw.map((raw: any) => {
         // Find English short effect text
@@ -592,6 +653,7 @@ async function main() {
           pp: raw.pp ?? 0,
           effectText,
           effectChance: raw.effect_chance ?? null,
+          tmNumber: tmNumberMap.get(raw.name) ?? null,
         };
       });
 
