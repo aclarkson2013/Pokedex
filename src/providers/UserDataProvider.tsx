@@ -8,13 +8,14 @@ import { useFriendsStore } from "@/stores/friends-store";
 
 /**
  * Syncs the user data store with Firebase auth state.
- * Loads favorites/collection/teams/friends when user logs in, clears on logout.
+ * Loads favorites/collection/teams when user logs in, clears on logout.
+ * Subscribes to real-time friend/request listeners.
  */
 export function UserDataProvider({ children }: { children: ReactNode }) {
   const { user, isConfigured } = useAuth();
   const { loadUserData, clearUserData, isLoaded } = useUserDataStore();
   const { loadTeams, clearTeams, isLoaded: teamsLoaded } = useTeamStore();
-  const { loadFriends, clearFriends, isLoaded: friendsLoaded } = useFriendsStore();
+  const { subscribe, unsubscribe } = useFriendsStore();
 
   useEffect(() => {
     if (!isConfigured) return;
@@ -26,15 +27,14 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       if (!teamsLoaded) {
         loadTeams(user.uid);
       }
-      if (!friendsLoaded) {
-        loadFriends(user.uid);
-      }
+      // Real-time listener — subscribe handles dedup internally
+      subscribe(user.uid);
     } else {
       clearUserData();
       clearTeams();
-      clearFriends();
+      unsubscribe();
     }
-  }, [user, isConfigured, isLoaded, teamsLoaded, friendsLoaded, loadUserData, clearUserData, loadTeams, clearTeams, loadFriends, clearFriends]);
+  }, [user, isConfigured, isLoaded, teamsLoaded, loadUserData, clearUserData, loadTeams, clearTeams, subscribe, unsubscribe]);
 
   return <>{children}</>;
 }

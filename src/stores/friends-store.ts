@@ -1,15 +1,21 @@
 /**
  * Zustand store for friends and friend requests.
  *
- * Syncs with Firestore when user is logged in.
- * Uses optimistic updates for snappy UI.
+ * Uses real-time Firestore listeners (onSnapshot) so that
+ * incoming requests, sent requests, and friends list update instantly.
  */
 
 import { create } from "zustand";
 import {
-  getFriends,
-  getIncomingRequests,
-  getSentRequests,
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  type Unsubscribe,
+} from "firebase/firestore";
+import { getFirebaseDb } from "@/lib/firebase/config";
+import {
   sendFriendRequest,
   acceptFriendRequest,
   declineFriendRequest,
@@ -29,8 +35,8 @@ interface FriendsStoreState {
   isLoaded: boolean;
 
   // Actions
-  loadFriends: (uid: string) => Promise<void>;
-  clearFriends: () => void;
+  subscribe: (uid: string) => void;
+  unsubscribe: () => void;
   sendRequest: (
     fromUser: { uid: string; displayName: string; photoURL: string | null },
     toUser: UserProfile
@@ -41,32 +47,94 @@ interface FriendsStoreState {
   removeFriendAction: (uid: string, friendUid: string) => Promise<void>;
 }
 
+// Track active listeners outside the store so they survive re-renders
+let _unsubFriends: Unsubscribe | null = null;
+let _unsubIncoming: Unsubscribe | null = null;
+let _unsubSent: Unsubscribe | null = null;
+let _subscribedUid: string | null = null;
+
 export const useFriendsStore = create<FriendsStoreState>((set, get) => ({
   friends: [],
   incomingRequests: [],
   sentRequests: [],
   isLoaded: false,
 
-  loadFriends: async (uid: string) => {
-    try {
-      const [friends, incoming, sent] = await Promise.all([
-        getFriends(uid),
-        getIncomingRequests(uid),
-        getSentRequests(uid),
-      ]);
-      set({
-        friends,
-        incomingRequests: incoming,
-        sentRequests: sent,
-        isLoaded: true,
-      });
-    } catch (err) {
-      console.error("[FriendsStore] Failed to load:", err);
-      set({ isLoaded: true });
-    }
+  subscribe: (uid: string) => {
+    // Don't re-subscribe if already listening for this user
+    if (_subscribedUid === uid) return;
+
+    // Clean up any existing listeners
+    get().unsubscribe();
+    _subscribedUid = uid;
+
+    const db = getFirebaseDb();
+
+    // Listen to friends list
+    const friendsRef = collection(db, "users", uid, "friends");
+    const friendsQ = query(friendsRef, orderBy("addedAt", "desc"));
+    _unsubFriends = onSnapshot(
+      friendsQ,
+      (snap) => {
+        const friends = snap.docs.map(
+          (d) => ({ ...d.data(), friendUid: d.id }) as FriendEntry
+        );
+        set({ friends, isLoaded: true });
+      },
+      (err) => {
+        console.error("[FriendsStore] Friends listener error:", err);
+        set({ isLoaded: true });
+      }
+    );
+
+    // Listen to incoming friend requests (pending only)
+    const incomingRef = collection(db, "users", uid, "friendRequests");
+    const incomingQ = query(
+      incomingRef,
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc")
+    );
+    _unsubIncoming = onSnapshot(
+      incomingQ,
+      (snap) => {
+        const incomingRequests = snap.docs.map(
+          (d) => ({ id: d.id, ...d.data() }) as FriendRequestDocument
+        );
+        set({ incomingRequests });
+      },
+      (err) => {
+        console.error("[FriendsStore] Incoming requests listener error:", err);
+      }
+    );
+
+    // Listen to sent requests (pending only)
+    const sentRef = collection(db, "users", uid, "sentRequests");
+    const sentQ = query(
+      sentRef,
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc")
+    );
+    _unsubSent = onSnapshot(
+      sentQ,
+      (snap) => {
+        const sentRequests = snap.docs.map(
+          (d) => ({ id: d.id, ...d.data() }) as SentRequestRef
+        );
+        set({ sentRequests });
+      },
+      (err) => {
+        console.error("[FriendsStore] Sent requests listener error:", err);
+      }
+    );
   },
 
-  clearFriends: () => {
+  unsubscribe: () => {
+    _unsubFriends?.();
+    _unsubIncoming?.();
+    _unsubSent?.();
+    _unsubFriends = null;
+    _unsubIncoming = null;
+    _unsubSent = null;
+    _subscribedUid = null;
     set({
       friends: [],
       incomingRequests: [],
@@ -76,28 +144,8 @@ export const useFriendsStore = create<FriendsStoreState>((set, get) => ({
   },
 
   sendRequest: async (fromUser, toUser) => {
-    const { sentRequests } = get();
-
-    // Optimistic: add to sent requests
-    const tempId = `temp-${Date.now()}`;
-    const optimistic: SentRequestRef = {
-      id: tempId,
-      requestId: tempId,
-      toUid: toUser.uid,
-      toDisplayName: toUser.displayName,
-      toPhotoURL: toUser.photoURL,
-      status: "pending",
-      createdAt: new Date(),
-    };
-    set({ sentRequests: [optimistic, ...sentRequests] });
-
-    try {
-      await sendFriendRequest(fromUser, toUser);
-    } catch (err) {
-      console.error("[FriendsStore] Failed to send request:", err);
-      set({ sentRequests });
-      throw err;
-    }
+    // No optimistic update needed — the onSnapshot listener will pick it up
+    await sendFriendRequest(fromUser, toUser);
   },
 
   acceptRequest: async (uid: string, request: FriendRequestDocument) => {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useFriendsStore } from "@/stores/friends-store";
 import { cn } from "@/lib/utils/cn";
 
 const NAV_ITEMS = [
@@ -65,6 +66,7 @@ const NAV_ITEMS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const pendingCount = useFriendsStore((s) => s.incomingRequests.length);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/80 backdrop-blur-lg dark:border-gray-700 dark:bg-gray-900/80 safe-area-bottom">
@@ -75,18 +77,27 @@ export function BottomNav() {
               ? pathname === "/" || pathname.startsWith("/pokemon")
               : pathname.startsWith(item.href);
 
+          const showBadge = item.href === "/profile" && pendingCount > 0;
+
           return (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium transition-colors",
+                "relative flex flex-col items-center gap-0.5 px-4 py-2 text-[10px] font-medium transition-colors",
                 isActive
                   ? "text-red-500 dark:text-red-400"
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               )}
             >
-              {item.icon(isActive)}
+              <div className="relative">
+                {item.icon(isActive)}
+                {showBadge && (
+                  <span className="absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+                    {pendingCount > 9 ? "9+" : pendingCount}
+                  </span>
+                )}
+              </div>
               <span>{item.label}</span>
             </Link>
           );
