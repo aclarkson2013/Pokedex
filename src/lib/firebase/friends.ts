@@ -311,16 +311,18 @@ export async function areFriends(
 
 /**
  * Check if a friend request already exists between two users.
+ * Checks the sender's own sentRequests (which they have read access to)
+ * instead of the receiver's friendRequests.
  */
 export async function hasExistingRequest(
   fromUid: string,
   toUid: string
 ): Promise<boolean> {
   const db = getFirebaseDb();
-  const ref = collection(db, "users", toUid, "friendRequests");
+  const ref = collection(db, "users", fromUid, "sentRequests");
   const q = query(
     ref,
-    where("fromUid", "==", fromUid),
+    where("toUid", "==", toUid),
     where("status", "==", "pending"),
     limit(1)
   );
