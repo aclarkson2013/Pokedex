@@ -12,13 +12,16 @@
  *   data/search-index.json      - Pre-built search index
  *   data/moves.json             - Full move details (type, power, accuracy, PP)
  *   data/encounters/{group}.json - Per-game encounter data
+ *   data/items.json              - Item details (category, effect, cost)
  *
  * Usage: npm run fetch-data
- * Flags: --skip-moves --skip-encounters --force
+ * Flags: --skip-moves --skip-encounters --skip-veekun --skip-items --force
  */
 
 import * as fs from "fs";
 import * as path from "path";
+import { loadVeekunMoveEffects } from "./lib/veekun-moves";
+import { loadVeekunLocationNames } from "./lib/veekun-encounters";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -35,6 +38,8 @@ const RETRY_DELAY = 1000; // ms
 const args = process.argv.slice(2);
 const SKIP_MOVES = args.includes("--skip-moves");
 const SKIP_ENCOUNTERS = args.includes("--skip-encounters");
+const SKIP_VEEKUN = args.includes("--skip-veekun");
+const SKIP_ITEMS = args.includes("--skip-items");
 const FORCE = args.includes("--force");
 
 // Version-to-version-group mapping (for encounter data grouping)
@@ -674,6 +679,139 @@ async function main() {
     }
   } else {
     console.log("\n⏭️  Step 9: Skipping encounters (--skip-encounters)");
+  }
+
+  // ---- Step 10: Veekun CSV enrichment ----------------------------------------
+  if (!SKIP_VEEKUN) {
+    console.log("\n📚 Step 10: Enriching data with Veekun CSVs...");
+
+    try {
+      // 10a: Enrich move effect descriptions
+      if (!SKIP_MOVES && fs.existsSync(path.join(DATA_DIR, "moves.json"))) {
+        console.log("  10a: Enriching move effects...");
+        const veekunEffects = await loadVeekunMoveEffects();
+        const movesRaw = fs.readFileSync(path.join(DATA_DIR, "moves.json"), "utf-8");
+        const moves: MoveDetail[] = JSON.parse(movesRaw);
+
+        let enriched = 0;
+        for (const move of moves) {
+          const veekunEffect = veekunEffects.effects.get(move.name);
+          if (veekunEffect && veekunEffect.length > (move.effectText?.length ?? 0)) {
+            // Use Veekun's text only if it's more detailed
+            move.effectText = veekunEffect;
+            enriched++;
+          }
+        }
+
+        writeJson("moves.json", moves);
+        console.log(`  Enriched ${enriched}/${moves.length} move descriptions from Veekun`);
+      }
+
+      // 10b: Enrich encounter location names
+      if (!SKIP_ENCOUNTERS) {
+        const encounterDir = path.join(DATA_DIR, "encounters");
+        if (fs.existsSync(encounterDir)) {
+          console.log("  10b: Enriching encounter location names...");
+          const veekunLocations = await loadVeekunLocationNames();
+
+          const encounterFiles = fs.readdirSync(encounterDir).filter(f => f.endsWith(".json"));
+          let totalEnriched = 0;
+
+          for (const file of encounterFiles) {
+            const filePath = path.join(encounterDir, file);
+            const encounters: LocationEncounter[] = JSON.parse(
+              fs.readFileSync(filePath, "utf-8")
+            );
+
+            let fileEnriched = 0;
+            for (const enc of encounters) {
+              // Try to match location area identifier to a proper name
+              const properName = veekunLocations.names.get(enc.locationArea);
+              if (properName && properName !== enc.locationName) {
+                enc.locationName = properName;
+                fileEnriched++;
+              }
+            }
+
+            if (fileEnriched > 0) {
+              writeJson(`encounters/${file}`, encounters);
+              totalEnriched += fileEnriched;
+            }
+          }
+          console.log(`  Enriched ${totalEnriched} encounter location names from Veekun`);
+        }
+      }
+    } catch (err) {
+      console.warn("  ⚠ Veekun enrichment failed (non-fatal):", err);
+      console.warn("  Continuing with PokeAPI data only...");
+    }
+  } else {
+    console.log("\n⏭️  Step 10: Skipping Veekun enrichment (--skip-veekun)");
+  }
+
+  // ---- Step 11: Fetch item data -----------------------------------------------
+  if (!SKIP_ITEMS) {
+    if (!FORCE && isCacheFresh("items.json")) {
+      console.log("\n🎒 Step 11: items.json is fresh, skipping (use --force to override)");
+    } else {
+      console.log("\n🎒 Step 11: Fetching item data...");
+
+      try {
+        // Get list of all items
+        const itemListData: any = await fetchWithRetry(`${API_BASE}/item?limit=2500`);
+        const itemUrls: { name: string; url: string }[] = itemListData.results;
+        console.log(`  Found ${itemUrls.length} items`);
+
+        // Fetch individual item data
+        const itemDataRaw = await batchProcess(
+          itemUrls,
+          async (item) => {
+            try {
+              return await fetchWithRetry(item.url);
+            } catch {
+              return null;
+            }
+          },
+          CONCURRENCY,
+          "Item details"
+        );
+
+        // Extract item details
+        interface ItemDetail {
+          id: number;
+          name: string;
+          category: string;
+          effectText: string;
+          cost: number;
+          sprite: string | null;
+        }
+
+        const items: ItemDetail[] = [];
+        for (const raw of itemDataRaw) {
+          if (!raw) continue;
+          const r = raw as any;
+          const effectEntry = r.effect_entries?.find(
+            (e: any) => e.language?.name === "en"
+          );
+
+          items.push({
+            id: r.id,
+            name: r.name,
+            category: r.category?.name ?? "other",
+            effectText: effectEntry?.short_effect ?? "",
+            cost: r.cost ?? 0,
+            sprite: r.sprites?.default ?? null,
+          });
+        }
+
+        console.log(`\n💾 Writing items.json (${items.length} items)...`);
+        writeJson("items.json", items);
+      } catch (err) {
+        console.warn("  ⚠ Item fetching failed (non-fatal):", err);
+      }
+    }
+  } else {
+    console.log("\n⏭️  Step 11: Skipping items (--skip-items)");
   }
 
   // ---- Summary -------------------------------------------------------------

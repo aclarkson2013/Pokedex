@@ -11,6 +11,7 @@ import type {
   EvolutionChain,
   MoveDetail,
   LocationEncounter,
+  ItemDetail,
 } from "@/lib/db/pokemon-db";
 
 /** Load the master Pokemon list from static JSON. */
@@ -73,5 +74,12 @@ export async function loadEncountersByVersionGroup(
 ): Promise<LocationEncounter[]> {
   const res = await fetch(`/data/encounters/${slug}.json`);
   if (!res.ok) return []; // Not all version groups have encounter data
+  return res.json();
+}
+
+/** Load item details from static JSON. */
+export async function loadItems(): Promise<ItemDetail[]> {
+  const res = await fetch("/data/items.json");
+  if (!res.ok) return [];
   return res.json();
 }

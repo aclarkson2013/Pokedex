@@ -1,12 +1,50 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils/cn";
 import { EncounterTable } from "./EncounterTable";
 import { TrainerList } from "./TrainerList";
 import { ItemList } from "./ItemList";
 import { PokemonQuickView } from "./PokemonQuickView";
-import type { GameWalkthrough, WalkthroughPart } from "@/lib/pokemon/walkthroughs";
+import { hydrateEncounters, getEncountersByVersion } from "@/lib/db/pokemon-db";
+import {
+  mergeEncounters,
+  findMatchingEncounters,
+} from "@/lib/pokemon/encounter-enrichment";
+import type { LocationEncounter } from "@/lib/db/pokemon-db";
+import type {
+  GameWalkthrough,
+  WalkthroughPart,
+  WalkthroughEncounter,
+  WalkthroughLocation,
+} from "@/lib/pokemon/walkthroughs";
+
+/**
+ * Map game slugs to their version group slugs (for encounter data loading)
+ * and the version names to query for encounters.
+ */
+const SLUG_TO_VERSIONS: Record<string, { group: string; versions: string[] }> = {
+  "red-blue": { group: "red-blue", versions: ["red", "blue"] },
+  yellow: { group: "yellow", versions: ["yellow"] },
+  "gold-silver": { group: "gold-silver", versions: ["gold", "silver"] },
+  crystal: { group: "crystal", versions: ["crystal"] },
+  "ruby-sapphire": { group: "ruby-sapphire", versions: ["ruby", "sapphire"] },
+  emerald: { group: "emerald", versions: ["emerald"] },
+  "firered-leafgreen": { group: "firered-leafgreen", versions: ["firered", "leafgreen"] },
+  "diamond-pearl": { group: "diamond-pearl", versions: ["diamond", "pearl"] },
+  platinum: { group: "platinum", versions: ["platinum"] },
+  "heartgold-soulsilver": { group: "heartgold-soulsilver", versions: ["heartgold", "soulsilver"] },
+  "black-white": { group: "black-white", versions: ["black", "white"] },
+  "black2-white2": { group: "black2-white2", versions: ["black-2", "white-2"] },
+  "x-y": { group: "x-y", versions: ["x", "y"] },
+  "omega-ruby-alpha-sapphire": { group: "omega-ruby-alpha-sapphire", versions: ["omega-ruby", "alpha-sapphire"] },
+  "sun-moon": { group: "sun-moon", versions: ["sun", "moon"] },
+  "ultra-sun-ultra-moon": { group: "ultra-sun-ultra-moon", versions: ["ultra-sun", "ultra-moon"] },
+  "lets-go": { group: "lets-go", versions: ["lets-go-pikachu", "lets-go-eevee"] },
+  "sword-shield": { group: "sword-shield", versions: ["sword", "shield"] },
+  "legends-arceus": { group: "legends-arceus", versions: ["legends-arceus"] },
+  "scarlet-violet": { group: "scarlet-violet", versions: ["scarlet", "violet"] },
+};
 
 interface WalkthroughTabProps {
   walkthrough: GameWalkthrough;
@@ -15,6 +53,43 @@ interface WalkthroughTabProps {
 export function WalkthroughTab({ walkthrough }: WalkthroughTabProps) {
   const [selectedPart, setSelectedPart] = useState<number | null>(null);
   const [quickViewPokemonId, setQuickViewPokemonId] = useState<number | null>(null);
+  const [apiEncounters, setApiEncounters] = useState<LocationEncounter[]>([]);
+  const [encountersLoaded, setEncountersLoaded] = useState(false);
+
+  // Lazily load encounter data from IndexedDB for this game
+  useEffect(() => {
+    const config = SLUG_TO_VERSIONS[walkthrough.slug];
+    if (!config) return;
+
+    let cancelled = false;
+
+    async function loadEncounters() {
+      try {
+        // Hydrate encounters into IndexedDB (no-op if already loaded)
+        await hydrateEncounters(config.group);
+
+        // Load all encounters for all versions of this game
+        const allEncounters: LocationEncounter[] = [];
+        for (const version of config.versions) {
+          const versionEncs = await getEncountersByVersion(version);
+          allEncounters.push(...versionEncs);
+        }
+
+        if (!cancelled) {
+          setApiEncounters(allEncounters);
+          setEncountersLoaded(true);
+        }
+      } catch (err) {
+        console.warn("[WalkthroughTab] Failed to load API encounters:", err);
+        if (!cancelled) setEncountersLoaded(true);
+      }
+    }
+
+    loadEncounters();
+    return () => {
+      cancelled = true;
+    };
+  }, [walkthrough.slug]);
 
   const currentPart = selectedPart !== null
     ? walkthrough.parts.find((p) => p.part === selectedPart)
@@ -49,6 +124,11 @@ export function WalkthroughTab({ walkthrough }: WalkthroughTabProps) {
           <p className="text-sm text-gray-500 dark:text-gray-400">
             A step-by-step guide through the entire game. Tap a section to start.
           </p>
+          {encountersLoaded && apiEncounters.length > 0 && (
+            <p className="mt-1 text-[10px] text-blue-500 dark:text-blue-400">
+              ✦ Enriched with PokeAPI encounter data
+            </p>
+          )}
         </div>
 
         {/* Main storyline */}
@@ -121,47 +201,14 @@ export function WalkthroughTab({ walkthrough }: WalkthroughTabProps) {
 
       {/* Locations */}
       {currentPart.locations.map((loc, i) => (
-        <div key={`loc-${i}`} className="mb-6">
-          <h4 className="mb-2 text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-            {loc.name}
-          </h4>
-
-          {/* Story description */}
-          <div className="mb-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
-            <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-              {loc.description}
-            </p>
-          </div>
-
-          {/* Encounters */}
-          {loc.encounters && loc.encounters.length > 0 && (
-            <div className="mb-3">
-              <EncounterTable
-                encounters={loc.encounters}
-                versionTags={walkthrough.versionTags}
-                onPokemonClick={handlePokemonClick}
-              />
-            </div>
-          )}
-
-          {/* Trainers */}
-          {loc.trainers && loc.trainers.length > 0 && (
-            <div className="mb-3">
-              <TrainerList
-                trainers={loc.trainers}
-                onPokemonClick={handlePokemonClick}
-              />
-            </div>
-          )}
-
-          {/* Items */}
-          {loc.items && loc.items.length > 0 && (
-            <div className="mb-3">
-              <ItemList items={loc.items} />
-            </div>
-          )}
-        </div>
+        <EnrichedLocation
+          key={`loc-${i}`}
+          location={loc}
+          versionTags={walkthrough.versionTags}
+          apiEncounters={apiEncounters}
+          encountersLoaded={encountersLoaded}
+          onPokemonClick={handlePokemonClick}
+        />
       ))}
 
       {/* Previous / Next navigation — simplified to "Part X" */}
@@ -227,6 +274,79 @@ export function WalkthroughTab({ walkthrough }: WalkthroughTabProps) {
         pokemonId={quickViewPokemonId}
         onClose={() => setQuickViewPokemonId(null)}
       />
+    </div>
+  );
+}
+
+/* ── Enriched Location — merges API encounters ───────── */
+function EnrichedLocation({
+  location,
+  versionTags,
+  apiEncounters,
+  encountersLoaded,
+  onPokemonClick,
+}: {
+  location: WalkthroughLocation;
+  versionTags: string[];
+  apiEncounters: LocationEncounter[];
+  encountersLoaded: boolean;
+  onPokemonClick: (pokemonId: number) => void;
+}) {
+  // Merge hand-authored with API encounters
+  const mergedEncounters = useMemo(() => {
+    const handAuthored = location.encounters ?? [];
+    if (!encountersLoaded || apiEncounters.length === 0) {
+      return handAuthored;
+    }
+
+    // Find API encounters matching this location
+    const matching = findMatchingEncounters(location.name, apiEncounters);
+    if (matching.length === 0) return handAuthored;
+
+    return mergeEncounters(handAuthored, matching, versionTags);
+  }, [location.encounters, location.name, apiEncounters, encountersLoaded, versionTags]);
+
+  return (
+    <div className="mb-6">
+      <h4 className="mb-2 text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+        <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+        {location.name}
+      </h4>
+
+      {/* Story description */}
+      <div className="mb-3 rounded-xl bg-white p-4 shadow-sm dark:bg-gray-800">
+        <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+          {location.description}
+        </p>
+      </div>
+
+      {/* Encounters (merged) */}
+      {mergedEncounters.length > 0 && (
+        <div className="mb-3">
+          <EncounterTable
+            encounters={mergedEncounters}
+            versionTags={versionTags}
+            onPokemonClick={onPokemonClick}
+          />
+        </div>
+      )}
+
+      {/* Trainers */}
+      {location.trainers && location.trainers.length > 0 && (
+        <div className="mb-3">
+          <TrainerList
+            trainers={location.trainers}
+            onPokemonClick={onPokemonClick}
+          />
+        </div>
+      )}
+
+      {/* Items */}
+      {location.items && location.items.length > 0 && (
+        <div className="mb-3">
+          <ItemList items={location.items} />
+        </div>
+      )}
     </div>
   );
 }

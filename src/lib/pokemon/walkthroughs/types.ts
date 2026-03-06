@@ -16,6 +16,8 @@ export interface WalkthroughEncounter {
   levels: string;
   /** Encounter rate string, e.g. "40%", "10%", "—" for gift/event */
   rate: string;
+  /** Data source: "hand-authored" (default) or "api" (from PokeAPI/Veekun) */
+  source?: "hand-authored" | "api";
 }
 
 export interface WalkthroughTrainer {

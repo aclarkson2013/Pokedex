@@ -38,3 +38,6 @@ next-env.d.ts
 /public/sw.js
 /public/sw.js.map
 /public/swe-worker-*.js
+
+# veekun CSV cache
+/data/.cache/

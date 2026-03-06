@@ -107,6 +107,15 @@ export interface LocationEncounter {
   chance: number;
 }
 
+export interface ItemDetail {
+  id: number;
+  name: string;
+  category: string;
+  effectText: string;
+  cost: number;
+  sprite: string | null;
+}
+
 interface PokedexDB extends DBSchema {
   pokemon: {
     key: number;
@@ -140,6 +149,13 @@ interface PokedexDB extends DBSchema {
       "by-location": string;
     };
   };
+  items: {
+    key: string;
+    value: ItemDetail;
+    indexes: {
+      "by-category": string;
+    };
+  };
   meta: {
     key: string;
     value: {
@@ -155,7 +171,7 @@ interface PokedexDB extends DBSchema {
 // ---------------------------------------------------------------------------
 
 const DB_NAME = "pokedex";
-const DB_VERSION = 3; // v2: +moves, v3: +encounters
+const DB_VERSION = 4; // v2: +moves, v3: +encounters, v4: +items
 
 let dbPromise: Promise<IDBPDatabase<PokedexDB>> | null = null;
 
@@ -203,6 +219,14 @@ function getDB(): Promise<IDBPDatabase<PokedexDB>> {
           });
           encounterStore.createIndex("by-version", "versionName");
           encounterStore.createIndex("by-location", "locationArea");
+        }
+
+        // v4: Items store
+        if (!db.objectStoreNames.contains("items")) {
+          const itemsStore = db.createObjectStore("items", {
+            keyPath: "name",
+          });
+          itemsStore.createIndex("by-category", "category");
         }
       },
     });
@@ -287,10 +311,26 @@ export async function hydrateFromStatic(): Promise<void> {
     console.warn("[PokedexDB] moves.json not found, skipping moves hydration");
   }
 
+  // Hydrate items (if available)
+  try {
+    const itemsRes = await fetch("/data/items.json");
+    if (itemsRes.ok) {
+      const itemsData: ItemDetail[] = await itemsRes.json();
+      const itemsTx = db.transaction("items", "readwrite");
+      for (const item of itemsData) {
+        itemsTx.store.put(item);
+      }
+      await itemsTx.done;
+      console.log(`[PokedexDB] ${itemsData.length} items loaded`);
+    }
+  } catch (err) {
+    console.warn("[PokedexDB] items.json not found, skipping items hydration");
+  }
+
   // Mark as hydrated
   await db.put("meta", {
     key: "dataVersion",
-    value: "3.0.0",
+    value: "4.0.0",
     updatedAt: Date.now(),
   });
 
@@ -466,4 +506,51 @@ export async function getEncountersByVersion(
   const db = await getDB();
   const index = db.transaction("encounters", "readonly").store.index("by-version");
   return index.getAll(versionName);
+}
+
+// ---------------------------------------------------------------------------
+// Item queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Get an item's details by name.
+ */
+export async function getItemByName(
+  name: string
+): Promise<ItemDetail | undefined> {
+  const db = await getDB();
+  return db.get("items", name);
+}
+
+/**
+ * Get all items as a Map keyed by name (for bulk lookups).
+ */
+export async function getAllItemsMap(): Promise<Map<string, ItemDetail>> {
+  const db = await getDB();
+  const all = await db.getAll("items");
+  const map = new Map<string, ItemDetail>();
+  for (const item of all) {
+    map.set(item.name, item);
+  }
+  return map;
+}
+
+/**
+ * Get items by category.
+ */
+export async function getItemsByCategory(
+  category: string
+): Promise<ItemDetail[]> {
+  const db = await getDB();
+  const index = db.transaction("items", "readonly").store.index("by-category");
+  return index.getAll(category);
+}
+
+/**
+ * Check if items data has been loaded.
+ */
+export async function isItemsLoaded(): Promise<boolean> {
+  const db = await getDB();
+  const count = await db.count("items");
+  return count > 0;
 }

@@ -15,6 +15,7 @@ import type {
   EvolutionChain,
   MoveDetail,
   LocationEncounter,
+  ItemDetail,
 } from "@/lib/db/pokemon-db";
 
 /** Load Pokemon list from disk. */
@@ -65,6 +66,14 @@ export function loadEncountersByVersionGroupSync(
     "encounters",
     `${slug}.json`
   );
+  if (!fs.existsSync(filePath)) return [];
+  const raw = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(raw);
+}
+
+/** Load item details from disk. */
+export function loadItemsSync(): ItemDetail[] {
+  const filePath = path.join(process.cwd(), "data", "items.json");
   if (!fs.existsSync(filePath)) return [];
   const raw = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(raw);
